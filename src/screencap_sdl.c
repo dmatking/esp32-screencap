@@ -166,14 +166,17 @@ void screencap_flush(void)
 bool screencap_poll(void)
 {
     if (s_headless) {
-        s_headless_frames_done++;
+        /* Check first so the loop body runs exactly frames_total times
+         * before saving. --frames 1 = one draw, then save. */
         if (s_headless_frames_done >= s_headless_frames_total) {
             if (s_screenshot_path[0]) {
                 if (screencap_save_png(s_screenshot_path) == 0)
                     printf("Saved %s\n", s_screenshot_path);
+                s_screenshot_path[0] = '\0';  /* prevent double-save */
             }
             return false;
         }
+        s_headless_frames_done++;
         return true;
     }
 
