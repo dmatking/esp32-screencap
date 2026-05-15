@@ -13,6 +13,7 @@ static SDL_Window      *s_window;
 static SDL_Renderer    *s_renderer;
 static SDL_Texture     *s_texture;
 static bool             s_headless;
+static bool             s_grid_visible;
 static char             s_screenshot_path[512];
 static int              s_screenshot_counter;
 
@@ -78,10 +79,55 @@ static void fill_rgba(uint8_t *rgba)
     }
 }
 
+/* Grid overlay — drawn on the renderer after texture copy, not into the framebuf.
+ * Screenshots bypass the renderer entirely so they are always grid-free. */
+#define GRID_MINOR 10
+#define GRID_MAJOR 50
+
+static void draw_grid(void)
+{
+    int w = s_cfg.width, h = s_cfg.height;
+    SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
+    for (int x = 0; x < w; x += GRID_MINOR) {
+        SDL_SetRenderDrawColor(s_renderer, 255, 255, 255,
+                               (x % GRID_MAJOR == 0) ? 60 : 25);
+        SDL_RenderDrawLine(s_renderer, x, 0, x, h - 1);
+    }
+    for (int y = 0; y < h; y += GRID_MINOR) {
+        SDL_SetRenderDrawColor(s_renderer, 255, 255, 255,
+                               (y % GRID_MAJOR == 0) ? 60 : 25);
+        SDL_RenderDrawLine(s_renderer, 0, y, w - 1, y);
+    }
+    SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_NONE);
+}
+
 /* Internal: called by screencap_png.c */
 void screencap_fill_rgba_for_png(uint8_t *rgba) { fill_rgba(rgba); }
 int  screencap_get_width(void)                  { return s_cfg.width; }
 int  screencap_get_height(void)                 { return s_cfg.height; }
+bool screencap_is_grid_visible(void)            { return s_grid_visible; }
+
+void screencap_draw_grid_rgba(uint8_t *rgba, int w, int h)
+{
+    for (int x = 0; x < w; x += GRID_MINOR) {
+        uint8_t a = (x % GRID_MAJOR == 0) ? 60 : 25;
+        for (int y = 0; y < h; y++) {
+            uint8_t *p = rgba + (y * w + x) * 4;
+            p[0] = (uint8_t)(p[0] + (255 - p[0]) * a / 255);
+            p[1] = (uint8_t)(p[1] + (255 - p[1]) * a / 255);
+            p[2] = (uint8_t)(p[2] + (255 - p[2]) * a / 255);
+        }
+    }
+    for (int y = 0; y < h; y += GRID_MINOR) {
+        uint8_t a = (y % GRID_MAJOR == 0) ? 60 : 25;
+        for (int x = 0; x < w; x++) {
+            uint8_t *p = rgba + (y * w + x) * 4;
+            p[0] = (uint8_t)(p[0] + (255 - p[0]) * a / 255);
+            p[1] = (uint8_t)(p[1] + (255 - p[1]) * a / 255);
+            p[2] = (uint8_t)(p[2] + (255 - p[2]) * a / 255);
+        }
+    }
+}
 
 /* -----------------------------------------------------------------------
  * Public API
@@ -102,6 +148,8 @@ int screencap_init(screencap_cfg_t *cfg, int argc, char **argv)
         } else if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
             s_headless_frames_total = atoi(argv[i + 1]);
             if (s_headless_frames_total < 1) s_headless_frames_total = 1;
+        } else if (strcmp(argv[i], "--grid") == 0) {
+            s_grid_visible = true;
         }
     }
 
@@ -160,6 +208,7 @@ void screencap_flush(void)
 
     SDL_RenderClear(s_renderer);
     SDL_RenderCopy(s_renderer, s_texture, NULL, NULL);
+    if (s_grid_visible) draw_grid();
     SDL_RenderPresent(s_renderer);
 }
 
@@ -194,9 +243,18 @@ bool screencap_poll(void)
                     printf("Saved %s\n", path);
                 break;
             }
+            case SDLK_g:
+                s_grid_visible = !s_grid_visible;
+                break;
             default:
                 break;
             }
+        }
+        if (e.type == SDL_MOUSEBUTTONDOWN) {
+            int lx = e.button.x / s_cfg.scale;
+            int ly = e.button.y / s_cfg.scale;
+            printf("click: x=%d, y=%d\n", lx, ly);
+            fflush(stdout);
         }
     }
     return true;

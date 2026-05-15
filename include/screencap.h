@@ -55,6 +55,8 @@ int screencap_save_png(const char *path);
 /* Pump SDL events.
  * Returns false when the user closes the window or presses Escape.
  * Pressing 'P' auto-saves screenshot_NNNN.png.
+ * Pressing 'G' toggles a grid overlay (10px minor / 50px major; not in screenshots).
+ * Clicking the window prints board-space coordinates to stdout (layout aid).
  * In headless mode always returns false after one call (caller should exit). */
 bool screencap_poll(void);
 

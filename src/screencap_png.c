@@ -6,6 +6,8 @@
 
 /* Bridge to screencap_sdl.c — avoids duplicating format conversion */
 void screencap_fill_rgba_for_png(uint8_t *rgba);
+void screencap_draw_grid_rgba(uint8_t *rgba, int w, int h);
+bool screencap_is_grid_visible(void);
 int  screencap_get_width(void);
 int  screencap_get_height(void);
 
@@ -26,6 +28,8 @@ int screencap_save_png(const char *path)
     if (!rgba) return -1;
 
     screencap_fill_rgba_for_png(rgba);
+    if (screencap_is_grid_visible())
+        screencap_draw_grid_rgba(rgba, w, h);
 
     int ok = stbi_write_png(path, w, h, 4, rgba, w * 4);
     free(rgba);
