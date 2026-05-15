@@ -66,6 +66,56 @@ void screencap_destroy(void);
 /* True if invoked with --screenshot (headless PNG mode). */
 bool screencap_is_headless(void);
 
+/* -----------------------------------------------------------------------
+ * Layout editor (optional)
+ *
+ * Lets the project register a set of named bounding rects that the user
+ * can drag with the mouse / nudge with arrow keys while the sim window
+ * is in edit mode. Screencap handles all UI (selection rect, drag math,
+ * keyboard handling); the project owns the underlying coordinates and
+ * any persistence.
+ *
+ * Element ownership: the array is owned by the project. Screencap reads
+ * and *writes* x/y as the user manipulates elements. The project
+ * propagates those values to wherever they're consumed (e.g. a draw
+ * function reading from the same memory).
+ *
+ * Keys (active only when an editor has been registered):
+ *   E              Toggle edit mode on/off.
+ *   Click          Select the topmost element under the cursor.
+ *   Mouse drag     Move the selected element.
+ *   Arrows         Nudge selected element by 1 px (Shift = 10 px).
+ *   S              Invoke the save callback (project writes to disk).
+ *   R              Invoke the reload callback (project re-reads from disk).
+ *
+ * Element rects are in *board-space* pixels (same coordinate system as
+ * the framebuffer). Screencap converts to/from window-space using the
+ * cfg.scale factor automatically.
+ * ----------------------------------------------------------------------- */
+typedef struct {
+    const char *id;        /* stable identifier, e.g. "views_label" */
+    int x, y, w, h;        /* bounding rect; w/h drive hit-testing only */
+} screencap_elem_t;
+
+typedef void (*screencap_save_fn_t)(const screencap_elem_t *elems,
+                                    int count, void *ctx);
+typedef void (*screencap_reload_fn_t)(void *ctx);
+
+/* Register an editor session. `elems` must remain valid for as long as
+ * screencap is running; screencap may write into its members.
+ *
+ * Either callback may be NULL — pass NULL for save_fn to make the editor
+ * read-only (no S keybind), NULL for reload_fn to disable R. */
+void screencap_editor_register(screencap_elem_t      *elems,
+                               int                    count,
+                               screencap_save_fn_t    save_fn,
+                               screencap_reload_fn_t  reload_fn,
+                               void                  *ctx);
+
+/* True if edit mode is currently active. The project draw function may
+ * use this to skip rendering its own background ornaments if desired. */
+bool screencap_editor_active(void);
+
 #ifdef __cplusplus
 }
 #endif
