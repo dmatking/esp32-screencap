@@ -4,7 +4,9 @@ Native Linux/Windows desktop simulator for embedded display projects. Preview yo
 
 Works with any project that owns a framebuffer in memory: LCD, OLED, e-ink, monochrome, color, doesn't matter. ESP-IDF stubs are bundled because that's where it started, but they're optional and the same approach works for any embedded toolchain (STM32, RP2040, Zephyr, bare-metal) as long as you provide the equivalent shim headers.
 
-![mono OLED demo](examples/mono_sh1107/build/mono_test.png) ![color LCD demo](examples/color_rgb565/build/color_test.png)
+<img src="assets/cyd_repo.png" alt="CYD 320x240 dashboard screenshot" width="320" hspace="8">&nbsp;<img src="assets/p4_repo.png" alt="Waveshare P4 720x720 dashboard screenshot" width="320" hspace="8">
+
+*Rendered from the sim, not the device — same renderer either way. From [esp32-gh-dashboard](https://github.com/dmatking/esp32-gh-dashboard), a project using display-sim for both desktop preview and layout editing.*
 
 ## How it works
 
