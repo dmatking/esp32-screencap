@@ -1,8 +1,8 @@
-# esp32-screencap
+# display-sim
 
-Native Linux/Windows desktop simulator for ESP32 display projects.
+Native Linux/Windows desktop simulator for embedded display projects. Preview your firmware's UI in a live SDL2 window, save PNG screenshots, and interactively drag elements around to tune the layout — all without flashing hardware.
 
-Compile your existing ESP32 display code unchanged, see what the screen looks like in a live SDL2 window, and save PNG screenshots — useful for README images, CI, and development without hardware.
+Works with any project that owns a framebuffer in memory: LCD, OLED, e-ink, monochrome, color, doesn't matter. ESP-IDF stubs are bundled because that's where it started, but they're optional and the same approach works for any embedded toolchain (STM32, RP2040, Zephyr, bare-metal) as long as you provide the equivalent shim headers.
 
 ![mono OLED demo](examples/mono_sh1107/build/mono_test.png) ![color LCD demo](examples/color_rgb565/build/color_test.png)
 
@@ -12,11 +12,11 @@ Your project's display driver has two implementations:
 
 | File | Used when |
 |---|---|
-| `display_esp.c` | Building for ESP32 with ESP-IDF |
-| `display_sim.c` | Building for desktop (calls screencap) |
+| `display_hw.c` (or whatever you call it) | Building for the target — talks to real hardware |
+| `display_sim.c` | Building for desktop — calls into display-sim |
 
-The sim build uses a native CMake project that:
-1. Includes `esp_stubs/` headers to shadow ESP-IDF includes
+The desktop build is a native CMake project that:
+1. (Optionally) includes the bundled stub headers to shadow ESP-IDF / driver / FreeRTOS includes
 2. Links SDL2 for the live preview window
 3. Uses `stb_image_write` (vendored, header-only) for PNG output
 
@@ -27,8 +27,10 @@ The project's framebuffer is pointed to directly — no copy, no protocol change
 | `screencap_format_t` | Description | Common hardware |
 |---|---|---|
 | `SCREENCAP_MONO_PAGES` | 1-bpp, 8-rows-per-page | SH1107, SSD1306, SSD1309 |
-| `SCREENCAP_RGB565` | 16-bpp packed, row-major | ST7789, ILI9341, ST7703 |
+| `SCREENCAP_RGB565` | 16-bpp packed, row-major | ST7789, ILI9341, ST7796, ST7703 |
 | `SCREENCAP_RGB888` | 24-bpp, row-major | generic RGB framebuffer |
+
+> **Note:** the C API uses a `screencap_` prefix throughout — that's the legacy name from when this repo was called `esp32-screencap`. Functionally the library is now `display-sim`, but the symbol prefix stays for API stability. A future major version may rename it.
 
 ## Dependencies
 
@@ -43,7 +45,7 @@ No other runtime dependencies. PNG output uses vendored `stb_image_write.h`.
 Clone as a submodule in your project:
 
 ```bash
-git submodule add https://github.com/dmatking/esp32-screencap.git sim/screencap
+git submodule add https://github.com/dmatking/display-sim.git sim/display-sim
 ```
 
 Create `sim/CMakeLists.txt`:
@@ -52,7 +54,7 @@ Create `sim/CMakeLists.txt`:
 cmake_minimum_required(VERSION 3.16)
 project(myproject_sim C)
 
-include(screencap/cmake/screencap.cmake)
+include(display-sim/cmake/screencap.cmake)
 
 screencap_add_sim(myproject_sim
     SOURCES
@@ -86,7 +88,7 @@ make
 
 ## Layout editor (optional)
 
-Projects with hand-positioned UI elements can register an editor session and drag elements around the live window. screencap handles all the UI (selection, drag math, arrow-key nudge, save callback); the project owns the underlying coordinates.
+Projects with hand-positioned UI elements can register an editor session and drag elements around the live window. display-sim handles all the UI (selection, drag math, arrow-key nudge, save callback); the project owns the underlying coordinates.
 
 ```c
 static screencap_elem_t elems[] = {
@@ -115,7 +117,7 @@ Once registered, the editor responds to:
 | `S` | Invoke the save callback |
 | `R` | Invoke the reload callback |
 
-Element rects are in **board-space pixels** (same coords as the framebuffer); screencap handles the window-scale conversion. screencap writes the new x/y back into the array the project passes — call `screencap_editor_active()` if you need to know whether edit mode is on.
+Element rects are in **board-space pixels** (same coords as the framebuffer); display-sim handles the window-scale conversion. It writes the new x/y back into the array the project passes — call `screencap_editor_active()` if you need to know whether edit mode is on.
 
 ## Headless / CI mode
 
@@ -137,7 +139,7 @@ Returns exit code 0 on success. Can be run in a CI job with a virtual framebuffe
 extern int   sim_argc;
 extern char **sim_argv;
 
-esp_err_t display_init(display_t *dev)
+int display_init(display_t *dev)
 {
     screencap_cfg_t cfg = {
         .width    = DISP_WIDTH,
@@ -168,7 +170,9 @@ while (screencap_poll()) {
 screencap_destroy();
 ```
 
-## ESP-IDF stubs provided
+## ESP-IDF stub headers (optional)
+
+If your project is built with ESP-IDF, bundled stub headers let you compile the firmware sources unchanged on desktop. Pass the include path to `screencap_add_sim` (the cmake helper does it automatically) and ESP-IDF code finds the right symbols:
 
 | Header | What it stubs |
 |---|---|
@@ -182,7 +186,7 @@ screencap_destroy();
 | `freertos/FreeRTOS.h` | `TickType_t`, `pdTRUE`, `pdMS_TO_TICKS` |
 | `freertos/task.h` | `vTaskDelay()` → `usleep` |
 
-For anything not listed, add a stub header to your project's `sim/` directory and include it before the `screencap/` path — it will shadow the missing header.
+For anything not listed (or for other toolchains entirely — STM32 HAL, Pico SDK, Zephyr, etc.), add a stub header to your project's `sim/` directory and include it before the `display-sim/` path — it will shadow the missing header.
 
 ## Examples
 
