@@ -43,7 +43,7 @@ No other runtime dependencies. PNG output uses vendored `stb_image_write.h`.
 Clone as a submodule in your project:
 
 ```bash
-git submodule add ssh://git@piserver:222/esp/esp32-screencap.git sim/screencap
+git submodule add https://github.com/dmatking/esp32-screencap.git sim/screencap
 ```
 
 Create `sim/CMakeLists.txt`:
@@ -79,16 +79,53 @@ make
 | Key | Action |
 |---|---|
 | `P` | Save `screenshot_NNNN.png` (auto-increments) |
+| `G` | Toggle a 10/50 px minor/major grid overlay (alignment aid) |
+| `E` | Toggle layout edit mode (only if the project registered an editor — see below) |
+| Click | Print board-space coords to stdout (or select an editor element if edit mode is on) |
 | `Esc` / close | Quit |
+
+## Layout editor (optional)
+
+Projects with hand-positioned UI elements can register an editor session and drag elements around the live window. screencap handles all the UI (selection, drag math, arrow-key nudge, save callback); the project owns the underlying coordinates.
+
+```c
+static screencap_elem_t elems[] = {
+    { .id = "title",  .x = 4,  .y = 4,  .w = 256, .h = 16 },
+    { .id = "score",  .x = 4,  .y = 28, .w = 64,  .h = 16 },
+    /* … */
+};
+
+static void save_layout(const screencap_elem_t *e, int n, void *ctx)
+{
+    /* Write your positions back to source / a generated header. */
+}
+
+screencap_editor_register(elems, sizeof(elems)/sizeof(elems[0]),
+                          save_layout, NULL /* reload */, NULL /* ctx */);
+```
+
+Once registered, the editor responds to:
+
+| Key | Action |
+|---|---|
+| `E` | Toggle edit mode (highlights all rects, enables selection) |
+| Click | Select the topmost element under the cursor |
+| Drag | Move the selected element |
+| Arrows | Nudge selected element by 1 px (Shift = 10 px) |
+| `S` | Invoke the save callback |
+| `R` | Invoke the reload callback |
+
+Element rects are in **board-space pixels** (same coords as the framebuffer); screencap handles the window-scale conversion. screencap writes the new x/y back into the array the project passes — call `screencap_editor_active()` if you need to know whether edit mode is on.
 
 ## Headless / CI mode
 
 ```bash
 ./myproject_sim --screenshot output.png
 ./myproject_sim --screenshot output.png --frames 60   # run 60 ticks first
+./myproject_sim --screenshot output.png --grid        # bake grid overlay into the PNG
 ```
 
-Returns exit code 0 on success. Can be run in a Forgejo CI job with a virtual framebuffer (`Xvfb`) or headless SDL (`SDL_VIDEODRIVER=offscreen`).
+Returns exit code 0 on success. Can be run in a CI job with a virtual framebuffer (`Xvfb`) or headless SDL (`SDL_VIDEODRIVER=offscreen`).
 
 ## Writing a display_sim.c
 
