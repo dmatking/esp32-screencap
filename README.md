@@ -8,6 +8,10 @@ Works with any project that owns a framebuffer in memory: LCD, OLED, e-ink, mono
 
 *Rendered from the sim, not the device — same renderer either way. From [esp32-gh-dashboard](https://github.com/dmatking/esp32-gh-dashboard), a project using display-sim for both desktop preview and layout editing.*
 
+Animation works too. Both bundled examples run at ~30 fps headless and were sampled out to the GIFs below:
+
+<img src="assets/mono_demo.gif" alt="SH1107 128x128 OLED bouncing ball at 30 fps" width="256" hspace="8">&nbsp;<img src="assets/color_demo.gif" alt="240x240 RGB565 bouncing squares over a rainbow gradient" width="240" hspace="8">
+
 ## How it works
 
 Your project's display driver has two implementations:
