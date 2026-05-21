@@ -192,6 +192,20 @@ For anything not listed (or for other toolchains entirely — STM32 HAL, Pico SD
 
 ## Examples
 
+### Real project
+
+**[esp32-gh-dashboard](https://github.com/dmatking/esp32-gh-dashboard)** is a complete GitHub traffic dashboard for five ESP32-family display boards (CYD 2.8", CYD-S3, CYD 3.5", Waveshare 2.0", Waveshare P4) that uses display-sim end-to-end:
+
+- Desktop preview during firmware development (no flash cycle for layout iteration)
+- PNG screenshots for the README, scripted out of the headless mode
+- Grid overlay + click-for-coords during initial layout work
+- The drag editor wired up to two layout structs (`layout_cyd_repo_t`, `layout_p4_repo_t`) — drag elements around in the sim, hit `S`, regenerated C source lands in the firmware on the next build
+- GitHub Actions builds the firmware for all five boards on push to main
+
+Browse [`sim/main_sim.c`](https://github.com/dmatking/esp32-gh-dashboard/blob/main/sim/main_sim.c), [`sim/layout_editor.c`](https://github.com/dmatking/esp32-gh-dashboard/blob/main/sim/layout_editor.c), and [`sim/CMakeLists.txt`](https://github.com/dmatking/esp32-gh-dashboard/blob/main/sim/CMakeLists.txt) for a full integration.
+
+### Standalone demos
+
 | Example | Display | What it shows |
 |---|---|---|
 | [`examples/mono_sh1107/`](examples/mono_sh1107/) | SH1107 128×128 OLED | Bouncing ball, frame counter |
